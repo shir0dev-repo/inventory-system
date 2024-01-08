@@ -12,10 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02f23bc4df293a74eb1484c3802a0f28, type: 3}
   m_Name: TestA
   m_EditorClassIdentifier: 
-  Name: 
-  Description: 
-  Sprite: {fileID: -2413806693520163455, guid: ebe73ca9363db456bacf42c025bb4847, type: 3}
   ID: -1
-  MaxStackSize: 54
-  IsSellable: 0
-  SellPrice: 1
+  Name: Circle
+  Description: 
+  MaxStackSize: 9
+  Sprite: {fileID: -2413806693520163455, guid: ebe73ca9363db456bacf42c025bb4847, type: 3}

@@ -1,28 +1,24 @@
-using System;
 using UnityEngine;
+
 namespace Shir0.InventorySystem
 {
     /// <summary>
-    /// <see cref="MonoBehaviour"/> housing an <see cref="Inventory"/>, along with its <see cref="Size"/> and other various data.
+    /// abstract MonoBehaviour holding an <see cref="Inventory"/>.
     /// </summary>
-    /// <remarks>
-    /// Instantiates a <see langword="new"/> <see cref="InventorySystem.Inventory"/> with the <see cref="Inventory.Size"/> set in the Inspector.<br/>
-    /// The <see cref="ItemHolder"/> component is used as somewhat of a wrapper for the <see cref="InventorySystem.Inventory"/>, enabling it to access<br/>
-    /// various <see cref="MonoBehaviour"/> methods. One such example is, along with the use of a <see cref="Rigidbody2D"/>, a player's<br/>
-    /// <see cref="Rigidbody2D"/> can collide with an <see cref="ItemPickup"/>, and add the <see cref="ItemData"/> to its <see cref="InventorySystem.Inventory"/>.
-    /// </remarks>
     public abstract class ItemHolder : MonoBehaviour
     {
         [SerializeField] protected Inventory m_inventory;
         [SerializeField] protected int m_size;
-        [SerializeField] protected int m_addPriority = 0;
-
-        public event EventHandler<EventArgs> OnInventoryDisplayRequested;
 
         /// <summary>
-        /// The <see cref="InventorySystem.Inventory"/> assigned to this item holder.
+        /// Requests the inventory's display to be updated.
         /// </summary>
-        /// <remarks><see langword="throws"/> an <see cref="InventoryNotFoundException"/> when <see cref="Inventory"/> is <see langword="null"/>.</remarks>
+        public System.Action OnInventoryDisplayRequested;
+
+        /// <summary>
+        /// The inventory assigned to this item holder.
+        /// </summary>
+        /// <exception cref="InventoryNotFoundException"/>
         public Inventory Inventory
         {
             get
@@ -35,58 +31,68 @@ namespace Shir0.InventorySystem
         }
 
         /// <summary>
-        /// The size of this item holder's <see cref="InventorySystem.Inventory"/> set in the Inspector.
+        /// The size of this item holder's inventory.
         /// </summary>
-        /// <remarks><see langword="throws"/> an <see cref="InvalidInventoryOperationException"/> if set to a value below 1.</remarks>
-        public int Size
-        {
-            get
-            {
-                if (m_size < 1)
-                    throw new InvalidInventoryOperationException("Inventory cannot be size 0!");
-                else
-                    return m_size;
-            }
-        }
+        public int Size => m_size;
 
         /// <summary>
-        /// Is the assigned <see cref="InventorySystem.Inventory"/> full? 
+        /// Initializes inventory.
         /// </summary>
-        /// <remarks>
-        /// <see langword="throws"/> an <see cref="InventoryNotFoundException"/> if assigned <see cref="InventorySystem.Inventory"/> is null.<br/>
-        /// Otherwise, <see langword="returns"/> <see cref="Inventory.IsFull"/>.
-        /// </remarks>
-        public bool AtCapacity
-        {
-            get
-            {
-                if (m_inventory == null)
-                    throw new InventoryNotFoundException();
-                else
-                    return Inventory.IsFull;
-            }
-        }
-
         protected virtual void Awake()
         {
             m_inventory = new Inventory(m_size);
         }
 
+        /// <summary>
+        /// Adds a specified amount of item to the inventory.
+        /// </summary>
+        /// <param name="itemCountTuple">The item and amount to add.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully added to the inventory.<br/>
+        /// <see langword="false"/>: Not all items could be added to the inventory.
+        /// </returns>
+        public abstract bool AddItem(ItemCountTuple itemCountTuple);
 
         /// <summary>
-        /// Adds a specified <paramref name="amount"/> of <paramref name="item"/> to the assigned <see cref="InventorySystem.Inventory"/>.
+        /// Removes a specified amount of item to the inventory.
         /// </summary>
-        /// <param name="item">The <see cref="ItemData"/> to add.</param>
-        /// <param name="amount">The amount of <see cref="ItemData"/> to add.</param>
-        /// <returns>If the <paramref name="amount"/> of <paramref name="item"/> was successfully added to the assigned <see cref="InventorySystem.Inventory"/>.</returns>
-        public abstract bool AddItem(ItemData item, int amount);
+        /// <param name="itemCountTuple">The item and amount to add.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully removed from the inventory.<br/>
+        /// <see langword="false"/>: Not all items could be removed from the inventory.
+        /// </returns>
+        public abstract bool RemoveItem(ItemCountTuple itemCountTuple);
 
         /// <summary>
-        /// Removes a specified <paramref name="amount"/> of <paramref name="item"/> to the assigned <see cref="InventorySystem.Inventory"/>.
+        /// Removes a collection of items and their corresponding amounts.
         /// </summary>
-        /// <param name="item">The <see cref="ItemData"/> to remove.</param>
-        /// <param name="amount">The amount of <see cref="ItemData"/> to remove.</param>
-        /// <returns>If the <paramref name="amount"/> of <paramref name="item"/> was successfully removed from the assigned <see cref="InventorySystem.Inventory"/>.</returns>
-        public abstract bool RemoveItem(ItemData item, int amount);
+        /// <param name="itemCountTuples">Collection of items to be removed.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully removed from the inventory.<br/>
+        /// <see langword="false"/>: Not all items could be removed from the inventory.
+        /// </returns>
+        public virtual bool RemoveItemRange(ItemCountTuple[] itemCountTuples)
+        {
+            return m_inventory.RemoveItemRange(itemCountTuples);
+        }
+
+        /// <summary>
+        /// Compares a collection of items to see if the inventory fully contains them.
+        /// </summary>
+        /// <param name="itemCountTuples">Collection of items to search for.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully found within the inventory.<br/>
+        /// <see langword="false"/>: Not all items could be found within the inventory.
+        /// </returns>
+        public virtual bool FindItemRange(ItemCountTuple[] itemCountTuples)
+        {
+            int[] remainingItems = null;
+            return m_inventory.FindItemRange(itemCountTuples, ref remainingItems);
+        }
+
+        /// <summary>
+        /// Requests the inventory's display to be updated.
+        /// </summary>
+        public virtual void RequestInventoryRefresh() => OnInventoryDisplayRequested?.Invoke();
     }
 }

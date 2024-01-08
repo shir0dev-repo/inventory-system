@@ -6,10 +6,6 @@ namespace Shir0.InventorySystem
     /// <remarks>
     /// <list type="table">
     /// <item>
-    /// <term>Inherits:</term>
-    /// <description><see cref="System.Exception"/></description>
-    /// </item>
-    /// <item>
     /// <term>Use when:</term>
     /// <description>Refering to an <see cref="InventorySlot"/>[] and its <see cref="InventorySlotUI"/>[] counterpart.</description>
     /// </item>

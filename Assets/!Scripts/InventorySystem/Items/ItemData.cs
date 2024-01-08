@@ -13,14 +13,29 @@ namespace Shir0.InventorySystem
     [CreateAssetMenu(fileName = "New Item Data", menuName = "Inventory/New Item")]
     public class ItemData : ScriptableObject
     {
-        public string Name;
-        [TextArea] public string Description;
-        public Sprite Sprite;
+        /// <summary>
+        /// The item's internal ID.
+        /// </summary>
         public int ID = -1;
 
-        [Space]
-        public int MaxStackSize = 99;
-        public bool IsSellable;
-        [Min(1)] public int SellPrice = 1;
+        /// <summary>
+        /// The name of the item.
+        /// </summary>
+        public string Name;
+
+        /// <summary>
+        /// A short text, describing the item.
+        /// </summary>
+        [TextArea] public string Description;
+
+        /// <summary>
+        /// The item's maximum stack size.
+        /// </summary>
+        [Min(1)] public int MaxStackSize = 99;
+
+        /// <summary>
+        /// The item's icon when inside the inventory.
+        /// </summary>
+        public Sprite Sprite;
     }
 }

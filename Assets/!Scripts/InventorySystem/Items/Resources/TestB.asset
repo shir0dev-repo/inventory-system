@@ -12,10 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02f23bc4df293a74eb1484c3802a0f28, type: 3}
   m_Name: TestB
   m_EditorClassIdentifier: 
-  Name: 
-  Description: 
-  Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
   ID: -1
+  Name: Square
+  Description: 
   MaxStackSize: 5
-  IsSellable: 0
-  SellPrice: 1
+  Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}

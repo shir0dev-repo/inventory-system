@@ -9,35 +9,22 @@ namespace Shir0.Movement
     public class PlayerMovement : MonoBehaviour, IPlayerInputListener
     {
         #region Input Listener Data
-        private PlayerInputHandler m_targetSender;
-        public string ActionName
-        {
-                get { return "Move"; }
-        }
-        public PlayerInputHandler PreferredSender
-        {
-            get
-            {
-                return m_targetSender = m_targetSender != null ? m_targetSender : GetComponent<PlayerInputHandler>();
-            }
-        }
+        private PlayerInputHandler m_preferredSender;
+        public string ActionName => "Move";
+        public PlayerInputHandler PreferredSender => m_preferredSender;
         #endregion
 
         [SerializeField] private MovementData m_movementData;
-
-        private Vector2 m_targetDirection = Vector2.zero;
         private bool m_isMoving = false;
 
         private void Awake()
         {
-            m_targetSender = GetComponent<PlayerInputHandler>();
+            m_preferredSender = GetComponent<PlayerInputHandler>();
         }
-
         private void OnEnable()
         {
             PlayerInputHandler.OnInputReceived += PerformAction;
         }
-
         private void OnDisable()
         {
             PlayerInputHandler.OnInputReceived -= PerformAction;
@@ -45,7 +32,7 @@ namespace Shir0.Movement
 
         public void PerformAction(object sender, PlayerInputHandler.InputEventArgs args)
         {
-            if (!sender.Equals(m_targetSender)) return;
+            if (!sender.Equals(PreferredSender)) return;
             else if (args.ActionName != ActionName) return;
 
             m_isMoving = !m_isMoving;

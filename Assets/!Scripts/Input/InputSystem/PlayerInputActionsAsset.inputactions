@@ -31,6 +31,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Interact",
+                    "type": "Button",
+                    "id": "5b10f02e-cd89-4ac7-9aca-7102f61b4c68",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -207,6 +216,17 @@
                     "processors": "Scale(factor=10)",
                     "groups": "KBM",
                     "action": "HotbarSelect",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "96997551-51e2-4f22-a487-d627cb35714a",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "KBM",
+                    "action": "Interact",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

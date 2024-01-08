@@ -1,211 +1,228 @@
-using System;
-
 namespace Shir0.InventorySystem
 {
     /// <summary>
-    /// Holds a dynamically sized stack of <see cref="ItemData"/>.
+    /// Holds and manipulates an amount of <see cref="ItemData"/>.
     /// </summary>
-    /// <remarks>
-    /// <see cref="InventorySlot"/>s are intended, but not required, to be used in conjunction with <see cref="Inventory"/> as an element of its collection.<br/>
-    /// <see cref="InventorySlot"/> handles keeping track of its assigned <see cref="ItemData"/>, and its corresponding amount.<br/><br/>
-    /// </remarks>
-    /// 
-    [Serializable]
+    [System.Serializable]
     public class InventorySlot
     {
         [UnityEngine.SerializeField] private ItemData m_item;
         [UnityEngine.SerializeField] private int m_currentStackSize = -1;
 
         /// <summary>
-        /// The current <see cref="ItemData"/> this slot holds.
+        /// The current item this slot holds.
         /// </summary>
-        public ItemData CurrentItem
-        {
-            get { return m_item; }
-        }
+        public ItemData CurrentItem => m_item;
 
         /// <summary>
-        /// The amount of <see cref="CurrentItem"/> this slot holds.
+        /// The size of the current item's stack.
         /// </summary>
-        public int CurrentStackSize
-        {
-            get
-            { return m_currentStackSize; }
-        }
+        public int CurrentStackSize => m_currentStackSize;
+
         /// <summary>
-        /// <see cref="CurrentItem"/> <see langword="is not null"/>.
+        /// If the slot's current item is not null.
         /// </summary>
-        public bool HasItem
-        {
-            get
-            {
-                return m_item != null;
-            }
-        }
+        public bool HasItem => m_item != null;
+
         /// <summary>
-        /// Returns whether or not this slot has reached maximum stack of items.
-        /// </summary>
-        public bool AtCapacity
-        {
-            get
-            {
-                if (m_item == null)
-                    return false;
-                else
-                    return m_currentStackSize >= m_item.MaxStackSize;
-            }
-        }
-        /// <summary>
-        /// Creates a blank/empty inventory slot.
+        /// Creates an empty slot.
         /// </summary>
         public InventorySlot()
         {
             ClearSlot();
         }
+
         /// <summary>
-        /// Creates an inventory slot using <see cref="AssignSlot(ItemData, int)"/>.
+        /// Creates a slot with a specified item and amount.
         /// </summary>
-        /// <param name="item"></param>
-        /// <param name="stackSize"></param>
-        public InventorySlot(ItemData item, int stackSize)
+        /// <param name="itemTuple">The item stack to assign.</param>
+        public InventorySlot(ItemCountTuple itemTuple)
         {
-            AssignSlot(item, stackSize);
+            AssignSlot(itemTuple);
         }
 
         /// <summary>
-        /// Clears this slot, assigning null and -1 to the item and stack size, respectively.
+        /// Creates a copy of an existing slot.
+        /// </summary>
+        /// <param name="other">The slot to copy from.</param>
+        public InventorySlot(InventorySlot other)
+        {
+            AssignSlot(other);
+        }
+
+        /// <summary>
+        /// Assigns an item and stack size to the slot.
+        /// </summary>
+        /// <param name="item">Item to assign.</param>
+        /// <param name="stackSize">Amount to assign.</param>
+        public void AssignSlot(ItemData item, int stackSize)
+        {
+            if (stackSize < 1 || item == null)
+                return;
+
+            m_item = item;
+            m_currentStackSize = stackSize;
+        }
+
+        /// <summary>
+        /// Assigns an item stack to the slot.
+        /// </summary>
+        /// <param name="itemTuple">Item stack to assign.</param>
+        public void AssignSlot(ItemCountTuple itemTuple)
+        {
+            if (itemTuple.Count < 1 || itemTuple.Item == null)
+                return;
+
+            m_item = itemTuple.Item;
+            m_currentStackSize = itemTuple.Count;
+        }
+        /// <summary>
+        /// Copies another slot's data onto this slot.
+        /// </summary>
+        /// <param name="other">The slot to copy from.</param>
+        public void AssignSlot(InventorySlot other)
+        {
+            m_item = other.m_item;
+            m_currentStackSize = other.m_currentStackSize;
+
+            if (m_currentStackSize < 1 || m_item == null)
+                ClearSlot();
+        }
+
+        /// <summary>
+        /// Clears this slot's stack of items.
         /// </summary>
         public void ClearSlot()
         {
             m_item = null;
             m_currentStackSize = -1;
         }
-        /// <summary>
-        /// Forces this slot to have a specified item and stackSize.
-        /// </summary>
-        /// <param name="item">Item to assign.</param>
-        /// <param name="stackSize">Amount to assign.</param>
-        public void AssignSlot(ItemData item, int stackSize)
-        {
-            m_item = item;
-            m_currentStackSize = stackSize;
-        }
+
         /// <summary>
         /// Adds to this slot.
         /// </summary>
-        /// <param name="itemToAdd">Given item to add to slot.</param>
+        /// <param name="item">Item to add.</param>
         /// <param name="amount">Amount to add.</param>
         /// <param name="remainder">Amount remaining after adding to stack.</param>
-        /// <returns></returns>
-        public bool AddToStack(ItemData itemToAdd, int amount, out int remainder)
+        /// <returns>
+        /// <see langword="true"/>: Amount was fully added to the slot.<br/>
+        /// <see langword="false"/>: Amount could not be fully added to the slot.
+        /// </returns>
+        public bool AddToStack(ItemData item, int amount, out int remainder)
         {
-            if (m_item != null && itemToAdd != m_item) // different items, can't add.
-            {
-                remainder = amount;
+            remainder = amount;
+
+            // cannot add less than one or null item.
+            if (amount < 1 || item == null)
                 return false;
-            }
-            else if (m_item == null) // empty slot, add item.
+
+            // slot has no item.
+            if (m_item == null)
             {
-                m_item = itemToAdd;
-                m_currentStackSize = amount;
-                remainder = 0;
-                return true;
+                // amount too large to fit in one stack.
+                if (amount > item.MaxStackSize)
+                {
+                    remainder = amount - item.MaxStackSize;
+                    AssignSlot(item, item.MaxStackSize);
+                    return false;
+                }
+                // amount fits in one stack.
+                else
+                {
+                    AssignSlot(item, amount);
+                    remainder = 0;
+                    return true;
+                }
             }
-            else if (m_item == itemToAdd) // same item, check stack sizes.
+            // slot has item.
+            else
             {
-                if (m_currentStackSize == m_item.MaxStackSize) // no space, can't add items.
+                // different items or no space, can't add items.
+                if (m_item != item || m_currentStackSize == m_item.MaxStackSize)
                 {
                     remainder = amount;
                     return false;
                 }
-                else if (m_currentStackSize + amount <= m_item.MaxStackSize) // enough space, add amount to stack.
+                // enough space, add amount to stack.
+                else if (m_currentStackSize + amount <= m_item.MaxStackSize)
                 {
                     m_currentStackSize += amount;
                     remainder = 0;
                     return true;
                 }
-                else // not enough space, fill the slot and assign remainder.
+                // not enough space, fill stack and assign remainder.
+                else
                 {
                     remainder = m_currentStackSize + amount - m_item.MaxStackSize;
                     m_currentStackSize = m_item.MaxStackSize;
-                    return true;
+                    return false;
                 }
             }
-            else // no condition satisfied.
-            {
-                remainder = amount;
-                return false;
-            }
         }
+
         /// <summary>
-        /// Removes a specified <paramref name="amount"/> of items from slot.
+        /// Removes from this slot.
         /// </summary>
-        /// <param name="amount">Amount of <see cref="ItemData"/> to remove from slot.</param>
-        /// <param name="remainingRequired">
-        ///     if <paramref name="amount"/> is greater than current stack size, 
-        ///     <paramref name="remainingRequired"/> is the remainder after the slot is emptied.<br/>
-        ///     otherwise, <paramref name="remainingRequired"/> is zero.
-        /// </param>
+        /// <param name="item">Item to remove.</param>
+        /// <param name="amount">Amount to remove.</param>
+        /// <param name="remainder">Amount remaining after removing from stack.</param>
         /// <returns>
-        /// <see langword="true"/>: <paramref name="amount"/> was successfully removed from slot.<br/>
-        /// <see langword="false"/>: more items are required.
+        /// <see langword="true"/>: Amount is fully removed from the slot.<br/>
+        /// <see langword="false"/>: Amount could not be fully removed from the slot.
         /// </returns>
-        public bool RemoveFromStack(int amount, out int remainingRequired)
+        public bool RemoveFromStack(ItemData item, int amount, out int remainder)
         {
-            if (m_currentStackSize - amount < 0) // stack size cannot support amount of items removed.
+            remainder = amount;
+
+            // cannot remove less than one or null item.
+            if (amount < 1 || item == null)
+                return false;
+            // this slot is empty.
+            else if (m_item == null || m_currentStackSize < 1)
+                return false;
+            // differing items, cannot remove.
+            else if (m_item != item)
+                return false;
+
+            // amount cannot be fully removed from this slot.
+            if (m_currentStackSize - amount < 0)
             {
-                remainingRequired = -(m_currentStackSize - amount);
+                remainder = amount - m_currentStackSize;
                 ClearSlot();
                 return false;
             }
-            else // enough items to match amount requested.
+            // amount can be fully removed from this slot.
+            else
             {
-                remainingRequired = 0;
+                remainder = 0;
                 m_currentStackSize -= amount;
-                if (m_currentStackSize < 1)
+
+                if (m_currentStackSize < 1 || m_item == null)
                     ClearSlot();
 
                 return true;
             }
         }
 
-        public bool EnoughRoomInStack(int amount, out int remaining)
+        /// <summary>
+        /// Splits the current stack in half.
+        /// </summary>
+        /// <returns>The slot created after splitting this slot.</returns>
+        public InventorySlot SplitStack()
         {
-            if (m_item == null)
-            {
-                remaining = 0;
-                return true;
-            }
+            InventorySlot splitSlot = new InventorySlot(this);
+            splitSlot.m_currentStackSize /= 2;
 
-            if (m_item.MaxStackSize - m_currentStackSize - amount >= 0)
-            {
-                remaining = 0;
-                return true;
-            }
-            else
-            {
-                remaining = (int)MathF.Abs(m_item.MaxStackSize - m_currentStackSize - amount);
-                return false;
-            }
-        }
+            // if stack size is one, dividing by 2 will truncate to zero, rendering this method useless. in such cases, set the stack size to one.
+            if (splitSlot.m_currentStackSize < 1)
+                splitSlot.m_currentStackSize = 1;
 
-        public bool EnoughItemsInStack(int amount, out int remainingNeeded)
-        {
-            if (m_item == null)
-            {
-                remainingNeeded = amount;
-                return false;
-            }
-            if (m_currentStackSize - amount >= 0)
-            {
-                remainingNeeded = 0;
-                return true;
-            }
-            else
-            {
-                remainingNeeded = (int)MathF.Abs(m_currentStackSize - amount);
-                return false;
-            }
+            m_currentStackSize -= splitSlot.m_currentStackSize;
+
+            if (m_currentStackSize < 1 || m_item == null)
+                ClearSlot();
+
+            return splitSlot;
         }
     }
 }

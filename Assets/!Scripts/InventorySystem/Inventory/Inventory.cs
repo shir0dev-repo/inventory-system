@@ -1,14 +1,8 @@
-﻿using System.Collections.Generic;
-
-namespace Shir0.InventorySystem
+﻿namespace Shir0.InventorySystem
 {
     /// <summary>
-    /// A collection of <see cref="InventorySlot"/> with a specified <see cref="Size"/>.
+    /// A collection of <see cref="InventorySlot"/> with a specified size.
     /// </summary>
-    /// <remarks>
-    /// The <see cref="Inventory"/> is an <see cref="InventorySlot"/> collection in charge of keeping track of held item data.<br/>
-    /// 
-    /// </remarks>
     [System.Serializable]
     public class Inventory
     {
@@ -16,9 +10,8 @@ namespace Shir0.InventorySystem
         [UnityEngine.SerializeField] private InventorySlot[] m_slots;
 
         /// <summary>
-        /// <see cref="InventorySlot"/>[] captured within this Inventory.
+        /// Collection of slots owned by this inventory.
         /// </summary>
-        /// <remarks><see langword="readonly"/> getter for <see cref="m_slots"/>.</remarks>
         public InventorySlot[] Slots
         {
             get { return m_slots; }
@@ -26,18 +19,16 @@ namespace Shir0.InventorySystem
         }
 
         /// <summary>
-        /// Size of <see cref="Slots"/> <see cref="InventorySlot"/>[].
+        /// Size of the inventory.
         /// </summary>
-        /// <remarks><see langword="readonly"/> getter for <see cref="m_size"/>.</remarks>
         public int Size
         {
             get { return m_size; }
         }
 
         /// <summary>
-        /// A count of <see cref="Slots"/> where the <see cref="InventorySlot"/> has no assigned <see cref="ItemData"/>.
+        /// The amount of slots with no assigned item.
         /// </summary>
-        /// <returns>The amount of <see cref="InventorySlot"/> in <see cref="Slots"/> that have no assigned <see cref="ItemData"/>.</returns>
         public int SlotsRemaining
         {
             get
@@ -53,26 +44,19 @@ namespace Shir0.InventorySystem
             }
         }
 
-        /// <summary>
-        /// Is every <see cref="InventorySlot"/> inside the <see cref="Inventory"/> full?
-        /// </summary>
-        /// <remarks>
-        /// <see langword="true"/>: Every slot in <see cref="Slots"/> has an item.<br/>
-        /// <see langword="false"/>: At least one slot in <see cref="Slots"/> has no item.
-        /// </remarks>
-        public bool IsFull
+        public string FilePath { get; }
+
+        public InventorySlot this[int i]
         {
-            get
-            {
-                return SlotsRemaining < 1;
-            }
+            get { return m_slots[i]; }
+            private set { m_slots[i] = value; }
         }
 
         /// <summary>
-        /// Default constructor specifying the <paramref name="size"/> of <see cref="Slots"/>.
+        /// A new inventory with a specified size.
         /// </summary>
-        /// <param name="size">Size of the <see cref="Inventory"/>.</param>
-        /// <exception cref="InvalidInventoryOperationException"></exception>
+        /// <param name="size">Size of the inventory.</param>
+        /// <exception cref="InvalidInventoryOperationException"/>
         public Inventory(int size)
         {
             if (size < 1)
@@ -83,195 +67,226 @@ namespace Shir0.InventorySystem
 
             for (int i = 0; i < size; i++)
                 m_slots[i] = new InventorySlot();
-            
+
         }
 
         /// <summary>
-        /// Constructor for copying one <see cref="Inventory"/> to a newly constructed one, using the supplied <see cref="InventorySlot"/>[].
+        /// Constructor for copying one inventory to a newly created one.
         /// </summary>
-        /// <remarks>This constructor is implemented to future-proof implementing <see cref="UnityEngine.JsonUtility"/> serialization/deserialization.</remarks>
-        /// <param name="slotsOther"><see cref="InventorySlot"/>[] to copy from.</param>
+        /// <param name="slotsOther">Slot array to copy from.</param>
         public Inventory(InventorySlot[] slotsOther)
         {
             m_slots = slotsOther;
             m_size = slotsOther.Length;
         }
 
-        public InventorySlot this[int i]
-        {
-            get { return m_slots[i]; }
-            private set { m_slots[i] = value; }
-        }
-
-        private bool TryAddItem(ItemData item, int amount, out InventorySlot[] targetSlots)
-        {
-            if (amount < 1)
-                throw new InvalidInventoryOperationException("Cannot add to inventory with zero or less items!");
-            else if (item == null)
-                throw new ItemNotFoundException("Cannot add null item to inventory slot! Try using InventorySlot.ClearSlot().");
-            else if (IsFull) // no slots available, could not add any items to inventory.
-            {
-                targetSlots = null;
-                return false;
-            }
-
-            List<InventorySlot> tSlots = new();
-
-            InventorySlot[] availableSlots = FindMatchingSlots(item); // array containing all valid slots to add to.
-
-            foreach (InventorySlot slot in availableSlots)
-            {
-                if (slot.EnoughRoomInStack(amount, out int remaining) || remaining > 0)
-                {
-                    tSlots.Add(slot);
-                }
-            }
-            targetSlots = tSlots.ToArray();
-            return tSlots.Count > 0;
-        }
-
         /// <summary>
         /// Adds a specified <paramref name="amount"/> of <see cref="ItemData"/> to the <see cref="Inventory"/>.
         /// </summary>
-        /// <remarks>
-        /// Before attempting to add <paramref name="amount"/> of <paramref name="itemToAdd"/> to <see cref="Slots"/>, check for an <paramref name="amount"/>
-        /// &lt; zero or a <see langword="null"/> <paramref name="itemToAdd"/>.<br/>
-        /// If either of these are true, <see langword="throw"/> an <see cref="InvalidInventoryOperationException"/> or <see cref="ItemNotFoundException"/> respectively.
-        /// <br/><br/>
-        /// <see cref="AddItem(ItemData, int)"/> creates a cloned <see cref="InventorySlot"/>[] from <see cref="Slots"/>, only containing elements<br/>
-        /// which match the given <paramref name="itemToAdd"/> or are empty, prioritizing matching slots first. It then iterates through each slot<br/>
-        /// from this array, trying to add the specified <see cref="ItemData"/> to the <see cref="InventorySlot.CurrentStackSize"/>. If it successfully<br/>
-        /// adds <paramref name="amount"/> to the stack, <see langword="return true"/>. Otherwise, assign the remaining value from 
-        /// <see cref="InventorySlot.AddToStack(ItemData, int, out int)"/><br/> to <paramref name="amount"/> and continue iterating. If <paramref name="amount"/>
-        /// does not reach zero by the end of the iteration, <see langword="return false"/>.
-        /// <br/><br/>
-        /// Currently, <see cref="AddItem(ItemData, int)"/> does not handle cases where some, but not all of <paramref name="amount"/> is added to the 
-        /// <see cref="Inventory"/>,<br/> which will cause the remainder to be deleted or ignored when exiting the method.
-        /// </remarks>
-        /// <param name="itemToAdd">The item to add.</param>
-        /// <param name="amount">The amount being added.</param>
-        /// <returns>Was <paramref name="itemToAdd"/> successfully added to the <see cref="Inventory"/>?</returns>
-        /// <exception cref="InvalidInventoryOperationException"></exception>
-        /// <exception cref="ItemNotFoundException"></exception>
-        public bool AddItem(ItemData itemToAdd, int amount)
+        /// <param name="itemCountTuple">The item and amount to add.</param>
+        /// <returns>
+        /// <see langword="true"/>: Item was fully added to inventory.<br/>
+        /// <see langword="false"/>: Item could not fully be added to inventory.
+        /// </returns>
+        /// <exception cref="InvalidInventoryOperationException"/>
+        /// <exception cref="ItemNotFoundException"/>
+        public bool AddItem(ItemCountTuple itemCountTuple)
         {
-            if (TryAddItem(itemToAdd, amount, out InventorySlot[] targetSlots))
+            // could not add full amount of items.
+            if (GetSpaceRemaining(itemCountTuple.Item) < itemCountTuple.Count)
+                return false;
+
+            // find valid slots.
+            int[] validIndices = this.FindValidSlotIndices(itemCountTuple.Item);
+
+            // keep track of how many items are left.
+            int amountRemaining = itemCountTuple.Count;
+
+            foreach (int index in validIndices)
             {
-                foreach (InventorySlot slot in targetSlots)
+                // items have been fully added.
+                if (m_slots[index].AddToStack(itemCountTuple.Item, amountRemaining, out int remainder))
                 {
-                    slot.AddToStack(itemToAdd, amount, out int remainder);
-                    if (remainder > 0)
-                    {
-                        UnityEngine.Debug.Log(remainder);
-                        amount = remainder;
-                        continue;
-                    }
-                    else return true;
+                    return true;
                 }
+                // items could not be fully added.
+                if (remainder > 0)
+                    amountRemaining = remainder;
+                // no remainder, meaning all items have been added.
+                else
+                    return true;
             }
 
-            return false; // could not add any items to inventory.
+            return amountRemaining <= 0;
         }
 
         /// <summary>
-        /// Removes a specified <paramref name="amount"/> of <paramref name="itemToRemove"/> from the <see cref="Inventory"/>.
+        /// Removes a specified amount of an item from the inventory.
         /// </summary>
-        /// <remarks>
-        /// Before attempting to remove <paramref name="amount"/> of <paramref name="itemToRemove"/> to <see cref="Slots"/>, check for an <paramref name="amount"/>
-        /// &lt; zero or a <see langword="null"/> <paramref name="itemToRemove"/>.<br/>
-        /// If either of these are true, <see langword="throw"/> an <see cref="InvalidInventoryOperationException"/> or <see cref="ItemNotFoundException"/> respectively.
-        /// <br/><br/>
-        /// <see cref="RemoveItem(ItemData, int)"/> first uses <see cref="FindMatchingSlots(ItemData, bool)"/> to create a cloned <see cref="InventorySlot"/>[]<br/>
-        /// from <see cref="Slots"/>, only containing elements which match the given <paramref name="itemToRemove"/>. It then iterates through each slot<br/>
-        /// from this array, removing the specified <see cref="ItemData"/> from the <see cref="InventorySlot.CurrentStackSize"/>. If it successfully removes the full<br/>
-        /// <paramref name="amount"/> from the slot's stack, call <see cref="InventorySlot.ClearSlot"/> and <see langword="return true"/>.<br/>
-        /// Otherwise, assign the remaining value from <see cref="InventorySlot.RemoveFromStack(int, out int)"/> to <paramref name="amount"/> and continue iterating.<br/>
-        /// If <paramref name="amount"/> does not reach zero by the end of the iteration, <see langword="return false"/>.
-        /// <br/><br/>
-        /// Currently, <see cref="RemoveItem(ItemData, int)"/> does not handle cases where some, but not all <paramref name="itemToRemove"/> can be removed.<br/>
-        /// If the enclosing scope requires <see cref="RemoveItem(ItemData, int)"/> to be <see langword="true"/> to continue functionality, this will cause the <br/>
-        /// <see cref="Inventory"/> to delete the items without the desired outcome.
-        /// </remarks>
-        /// <param name="itemToRemove">The target <see cref="ItemData"/> to remove from the <see cref="Inventory"/>.</param>
-        /// <param name="amount">The amount of <see cref="ItemData"/> to remove from the <see cref="Inventory"/>.</param>
-        /// <returns></returns>
-        /// <exception cref="ItemNotFoundException"></exception>
-        /// <exception cref="InvalidInventoryOperationException"></exception>
-        public bool RemoveItem(ItemData itemToRemove, int amount)
+        /// <param name="itemCountTuple">The item and amount to remove.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully removed.<br/>
+        /// <see langword="false"/>: Not all items could be removed.
+        /// </returns>
+        public bool RemoveItem(ItemCountTuple itemCountTuple)
         {
-            if (amount < 1)
-                throw new InvalidInventoryOperationException("Cannot remove zero items!");
+            // items could not be fully added.
+            if (GetItemTotal(itemCountTuple.Item) < itemCountTuple.Count)
+                return false;
 
-            else if (itemToRemove == null)
-                throw new ItemNotFoundException("Cannot remove null item from inventory!");
+            Inventory preModifiedInventory = new(m_slots);
 
-
-            InventorySlot[] matchingSlots = FindMatchingSlots(itemToRemove); // find all slots that have itemToRemove.
-            foreach (InventorySlot slot in matchingSlots)
-            {
-                if (slot.CurrentItem == null) continue; // ignore empty slots returned by GetAvailableSlots.
-                if (slot.CurrentItem == itemToRemove) // found the itemToRemove.
-                {
-                    // try removing amount of itemToRemove from current slot. If all items requested were removed, return true.
-                    if (slot.RemoveFromStack(amount, out int remainingRequired))
-                    {
-                        return true;
-                    }
-                    else // not all items were successfully removed from this slot. Assign the remaining amount and iterate through.
-                    {
-                        amount = remainingRequired;
-                        continue;
-                    }
-                }
-            }
-
-            return false; // if we were unable to break from the loop during slot.RemoveFromStack, we could not remove all items.
-        }
-
-        /// <summary>
-        /// Gets every <see cref="InventorySlot"/> in <see cref="Slots"/> that either contains the specified <paramref name="item"/>, or is empty.<br/>
-        /// if <paramref name="ignoreEmpty"/> is <see langword="true"/>, will only return matching slots.
-        /// </summary>
-        /// <remarks>
-        /// Before iterating, check that <c><paramref name="item"/> != <see langword="null"/></c>. If <see langword="true"/>, <see langword="throw"/> an
-        /// <see cref="ItemNotFoundException"/>.
-        /// <br/><br/>
-        /// Create two collections of <see cref="InventorySlot"/>, and iterate through <see cref="Slots"/>.<br/>
-        /// For each <see cref="InventorySlot"/> which contains <paramref name="item"/>, add it to the matching item collection.<br/>
-        /// If <paramref name="ignoreEmpty"/> is <see langword="false"/>, and the 
-        /// current <see cref="InventorySlot"/> has no assigned <see cref="ItemData"/>,<br/>
-        /// add it to the collection of <see cref="InventorySlot"/> with unassigned <see cref="ItemData"/>.
-        /// <br/><br/>
-        /// Post-iteration, if <paramref name="ignoreEmpty"/> is <see langword="false"/>, append the <see cref="InventorySlot"/>[]
-        /// with no assigned <see cref="ItemData"/><br/>
-        /// to the <see cref="InventorySlot"/>[] that matches the specified <paramref name="item"/>,
-        /// which allows existing <see cref="ItemData"/> to be <br/>
-        /// filled first and prevents <see cref="Inventory"/> clogging.
-        /// </remarks>
-        /// <param name="item">item to check against.</param>
-        /// <param name="ignoreEmpty">Only include <see cref="InventorySlot"/> that directly match <paramref name="item"/>?</param>
-        /// <returns><see cref="InventorySlot"/>[] containing <paramref name="item"/>. If <paramref name="ignoreEmpty"/> is false, appends
-        /// <see cref="InventorySlot"/>[] with no assigned <see cref="ItemData"/>.</returns>
-        /// <exception cref="ItemNotFoundException"></exception>
-        InventorySlot[] FindMatchingSlots(ItemData item, bool ignoreEmpty = false)
-        {
-            if (item == null)
-                throw new ItemNotFoundException("Cannot iterate with null item!");
-
-            List<InventorySlot> matchingSlots = new();
-            List<InventorySlot> emptySlots = new();
+            int amountRemaining = itemCountTuple.Count;
 
             foreach (InventorySlot slot in m_slots)
             {
-                if (!ignoreEmpty && slot.CurrentItem == null)
-                    emptySlots.Add(slot);
-                else if (slot.CurrentItem == item)
-                    matchingSlots.Add(slot);
-            }
-            if (!ignoreEmpty)
-                matchingSlots.AddRange(emptySlots);
+                // no item or unequivalent items.
+                if (!slot.HasItem || slot.HasItem && slot.CurrentItem != itemCountTuple.Item) continue;
 
-            return matchingSlots.ToArray();
+                // items were fully removed.
+                if (slot.RemoveFromStack(itemCountTuple.Item, amountRemaining, out int remainder))
+                    return true;
+
+                // items were not fully removed.
+                if (remainder > 0)
+                    amountRemaining = remainder;
+            }
+
+            // all items were successfully removed.
+            if (amountRemaining <= 0)
+                return true;
+
+            // items were not fully removed, reset ItemHolder.
+            m_slots = preModifiedInventory.m_slots;
+            return false;
+        }
+
+        /// <summary>
+        /// Removes a collection of items from the inventory.
+        /// </summary>
+        /// <param name="itemCountTuples">The items to remove, and their corresponding amounts.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were successfully removed.<br/>
+        /// <see langword="false"/>: Not all items could be removed.
+        /// </returns>
+        public bool RemoveItemRange(ItemCountTuple[] itemCountTuples)
+        {
+            foreach (ItemCountTuple itemTuple in itemCountTuples)
+            {
+                // an item could not be removed from the inventory.
+                if (!RemoveItem(itemTuple)) return false;
+            }
+
+            // all items successfully removed.
+            return true;
+        }
+
+        /// <summary>
+        /// Checks for any slot containing a specified item.
+        /// </summary>
+        /// <param name="item">The item to look for.</param>
+        /// <returns>
+        /// <see langword="true"/>: Item found.<br/>
+        /// <see langword="false"/>: Item not found.
+        /// </returns>
+        public bool FindItem(ItemData item)
+        {
+            foreach (InventorySlot slot in m_slots)
+            {
+                // item found.
+                if (slot.CurrentItem != item) continue;
+                else return true;
+            }
+            // item not found.
+            return false;
+        }
+
+        /// <summary>
+        /// Finds a collection of items within the inventory.
+        /// </summary>
+        /// <param name="itemCountTuples">The items to search for, and their corresponding amounts.</param>
+        /// <param name="remainingItems">The items that remain after the search.</param>
+        /// <returns>
+        /// <see langword="true"/>: All items were found within the inventory.<br/>
+        /// <see langword="false"/>: Not all items could be found.
+        /// </returns>
+        public bool FindItemRange(ItemCountTuple[] itemCountTuples, ref int[] remainingItems)
+        {
+            // copy item counts to be modified, if this is the first iteration.
+            if (remainingItems == null)
+            {
+                remainingItems = new int[itemCountTuples.Length];
+
+                // populate copied array.
+                for (int i = 0; i < itemCountTuples.Length; i++)
+                {
+                    remainingItems[i] = itemCountTuples[i].Count;
+                }
+            }
+
+            for (int i = 0; i < itemCountTuples.Length; i++)
+            {
+                remainingItems[i] -= GetItemTotal(itemCountTuples[i].Item);
+            }
+
+            // if any item could not fully be satisfied, return false.
+            foreach (int remainingItem in remainingItems)
+                if (remainingItem > 0) return false;
+
+            // all items satisfied.
+            return true;
+        }
+
+        /// <summary>
+        /// Finds the total amount of a specified item within the inventory.
+        /// </summary>
+        /// <param name="item">The item to search for.</param>
+        /// <returns>The total amount of the searched item within the inventory.</returns>
+        /// <exception cref="InvalidInventoryOperationException"/>
+        public int GetItemTotal(ItemData item)
+        {
+            if (item == null)
+                throw new InvalidInventoryOperationException("Cannot get total of null item!");
+
+            int total = 0;
+
+            foreach (InventorySlot slot in m_slots)
+            {
+                if (slot.CurrentItem == null || slot.CurrentItem != item) continue;
+                else
+                    total += slot.CurrentStackSize;
+            }
+
+            return total;
+        }
+
+        /// <summary>
+        /// Finds the total space available for a specified item.
+        /// </summary>
+        /// <param name="item">The item to search with.</param>
+        /// <returns>The total slots that could be filled by the specified item.</returns>
+        /// <exception cref="InvalidInventoryOperationException"/>
+        public int GetSpaceRemaining(ItemData item)
+        {
+            if (item == null)
+                throw new InvalidInventoryOperationException("Cannot iterate with null item!");
+
+            int total = 0;
+
+            foreach (InventorySlot slot in m_slots)
+            {
+                // slot empty, can fit full stack of item.
+                if (!slot.HasItem)
+                    total += item.MaxStackSize;
+                // different items, cannot fit.
+                else if (slot.CurrentItem != item)
+                    continue;
+                //same item, get remaining space in slot.
+                else
+                    total += item.MaxStackSize - slot.CurrentStackSize;
+            }
+
+            return total;
         }
     }
 }
