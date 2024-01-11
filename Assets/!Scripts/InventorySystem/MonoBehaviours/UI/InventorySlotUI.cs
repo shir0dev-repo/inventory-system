@@ -1,41 +1,39 @@
-using System;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Shir0.InventorySystem
+namespace Shir0.InventorySystem.UI
 {
     /// <summary>
     /// User Interface for displaying it's corresponding <see cref="InventorySlot"/>.
     /// </summary>
     public class InventorySlotUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler, IPointerExitHandler
     {
-        /// <summary>
-        /// An <see langword="event"/> argument for <see cref="OnUISlotClicked"/>.
-        /// </summary>
-        public class UISlotInteractionArgs : EventArgs
+        [System.Flags]
+        private enum InteractionType
         {
-            /// <summary>
-            /// The type of interaction performed with this UI slot.
-            /// </summary>
-            public SlotInteraction InteractionType;
+            None = 0,
+            HoverExit = 1,
+            HoverEnter = 2,
+            Click = 4
         }
 
         /// <summary>
         /// Invoked on hover enter and exit, or mouseclick.
         /// </summary>
-        public static event EventHandler<UISlotInteractionArgs> OnUISlotClicked;
+        public static event UIInteractionHandler OnUISlotClicked;
 
         /// <summary>
         /// Text component displaying current stack size.
         /// </summary>
-        [SerializeField] private TextMeshProUGUI m_stackSize;
+        [SerializeField] private TMPro.TextMeshProUGUI m_stackSize;
 
         /// <summary>
         /// Image displaying current item's Sprite.
         /// </summary>
         [SerializeField] private Image m_icon;
+
+        [SerializeField] private InteractionType m_allowedInteractions;
 
         /// <summary>
         /// The internal slot assigned to this UI slot.
@@ -99,7 +97,8 @@ namespace Shir0.InventorySystem
         /// <param name="eventData">Provided by Unity's EventSystem.</param>
         public void OnPointerEnter(PointerEventData eventData)
         {
-            OnUISlotClicked?.Invoke(this, new UISlotInteractionArgs { InteractionType = SlotInteraction.HoverEnter });
+            if (m_allowedInteractions.HasFlag(InteractionType.HoverEnter))
+                OnUISlotClicked?.Invoke(new() { Sender = this, EventData = eventData });
         }
 
         /// <summary>
@@ -107,8 +106,9 @@ namespace Shir0.InventorySystem
         /// </summary>
         /// <param name="eventData">Provided by Unity's EventSystem.</param>
         public void OnPointerClick(PointerEventData eventData)
-        { 
-            OnUISlotClicked?.Invoke(this, new UISlotInteractionArgs { InteractionType = eventData.GetClickType() });
+        {
+            if (m_allowedInteractions.HasFlag(InteractionType.Click))
+                OnUISlotClicked?.Invoke(new() { Sender = this, EventData = eventData });
         }
 
         /// <summary>
@@ -117,7 +117,8 @@ namespace Shir0.InventorySystem
         /// <param name="eventData">Provided by Unity's EventSystem.</param>
         public void OnPointerExit(PointerEventData eventData)
         {
-            OnUISlotClicked?.Invoke(this, new UISlotInteractionArgs { InteractionType = SlotInteraction.HoverExit });
+            if (m_allowedInteractions.HasFlag(InteractionType.HoverExit)) 
+                OnUISlotClicked?.Invoke(new() { Sender = this, EventData = eventData });
         }
     }
 }

@@ -1,20 +1,27 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
-namespace Shir0.InventorySystem
+namespace Shir0.InventorySystem.UI
 {
     /// <summary>
     /// A collection of UI slots linked to an inventory.
     /// </summary>
     public class InventoryDisplay : MonoBehaviour
     {
-        [SerializeField] private MouseInventory m_mouseInventory;
-        [SerializeField] private ItemHolder m_itemHolder;
-        [SerializeField] private InventorySlotUI[] m_uiSlots;
+        [SerializeField] protected ItemHolder m_itemHolder;
+        [SerializeField] protected InventorySlotUI[] m_uiSlots;
+        [SerializeField] protected MouseInventory m_mouseInventory;
 
-        private readonly Dictionary<InventorySlotUI, InventorySlot> m_slotDictionary = new();
+        protected readonly Dictionary<InventorySlotUI, InventorySlot> m_slotDictionary = new();
 
-        private void OnEnable()
+        private InventorySlotUI m_lastSelectedSlot = null;
+
+        protected static Color s_deselectedColor = new(0.75f, 0.75f, 0.75f, 0.5f);
+        protected static Color s_selectedColor = Color.white;
+
+        protected virtual void OnEnable()
         {
             InventorySlotUI.OnUISlotClicked += HandleUISlotInteraction;
             if (m_itemHolder != null)
@@ -24,7 +31,7 @@ namespace Shir0.InventorySystem
             }
         }
 
-        private void Start()
+        protected virtual void Start()
         {
             if (m_mouseInventory == null)
                 Debug.LogError("Mouse inventory slot not found!");
@@ -35,7 +42,7 @@ namespace Shir0.InventorySystem
             InitializeSlots(m_itemHolder.Inventory);
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
             InventorySlotUI.OnUISlotClicked -= HandleUISlotInteraction;
             m_itemHolder.OnInventoryDisplayRequested -= RefreshInventory;
@@ -46,7 +53,7 @@ namespace Shir0.InventorySystem
         /// </summary>
         /// <param name="inventory">The inventory to display.</param>
         /// <exception cref="SlotMismatchException"/>
-        void InitializeSlots(Inventory inventory)
+        protected void InitializeSlots(Inventory inventory)
         {
             if (m_uiSlots.Length != inventory.Size)
                 throw new SlotMismatchException("Display must be the same size as underlying Inventory!");
@@ -61,43 +68,62 @@ namespace Shir0.InventorySystem
         /// <summary>
         /// Updates every UI slot displaying the item holder's inventory.
         /// </summary>
-        private void RefreshInventory()
+        protected void RefreshInventory()
         {
             foreach (InventorySlotUI uiSlot in m_uiSlots)
                 uiSlot.UpdateSlot();
+        }
+
+        protected void ToggleSlotHighlight(InventorySlotUI slot, bool toggle)
+        {
+            if (!slot.TryGetComponent(out Image slotBackground)) return;
+            slotBackground.color = toggle ? s_selectedColor : s_deselectedColor;
         }
 
         /// <summary>
         /// Handles inventory functionality for iteracting with a UI slot.
         /// </summary>
         /// <param name="sender">The slot sending the interaction.</param>
-        /// <param name="interactionArgs">The arguments for the interaction.</param>
-        private void HandleUISlotInteraction(object sender, InventorySlotUI.UISlotInteractionArgs interactionArgs)
+        /// <param name="eventData">The event data for the fired event.</param>
+        protected void HandleUISlotInteraction(UISlotInteractionArgs args)
         {
-            if (!m_slotDictionary.ContainsKey(sender as InventorySlotUI))
+            if (args.Sender == null || !m_slotDictionary.ContainsKey(args.Sender))
                 return;
 
-            InventorySlotUI interactedSlot = sender as InventorySlotUI;
 
-            switch (interactionArgs.InteractionType)
+            if (args.EventData.pointerPress != null)
             {
-                case SlotInteraction.HoverEnter:
-                    break;
-                case SlotInteraction.HoverExit:
-                    break;
-                case SlotInteraction.ClickLeft:
-                    HandleUIClickLeft(interactedSlot);
-                    break;
-                case SlotInteraction.ClickMiddle:
-                    HandleUIClickMiddle(interactedSlot);
-                    break;
-                case SlotInteraction.ClickRight:
-                    HandleUIClickRight(interactedSlot);
-                    break;
+                switch (args.EventData.button)
+                {
+                    case PointerEventData.InputButton.Left:
+                        HandleUIClickLeft(args.Sender);
+                        break;
+                    case PointerEventData.InputButton.Middle:
+                        HandleUIClickMiddle(args.Sender);
+                        break;
+                    case PointerEventData.InputButton.Right:
+                        HandleUIClickRight(args.Sender);
+                        break;
+                }
+
+                args.Sender.UpdateSlot();
+                m_mouseInventory.UpdateMouseUI();
+            }
+            // check if current hovered gameObject is NOT the last hovered slot.
+            else if (m_lastSelectedSlot != null && args.EventData.pointerCurrentRaycast.gameObject != m_lastSelectedSlot.gameObject)
+            {
+                if (m_lastSelectedSlot == null) return;
+
+                ToggleSlotHighlight(m_lastSelectedSlot, false);
+                m_lastSelectedSlot = null;
+            }
+            // check if pointerEnter object is not null, meaning an inventory slot has been hovered.
+            else if (args.EventData.pointerEnter != null)
+            {
+                ToggleSlotHighlight(args.Sender, true);
+                m_lastSelectedSlot = args.Sender;
             }
 
-            interactedSlot.UpdateSlot();
-            m_mouseInventory.UpdateMouseUI();
         }
 
         /// <summary>

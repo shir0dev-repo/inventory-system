@@ -3,15 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using Shir0.InventorySystem;
 using Shir0.InputSystem;
-using System;
+using Shir0.InventorySystem.UI;
 
 public class PlayerHotbarController : MonoBehaviour, IPlayerInputListener
 {
-    public class HotbarSelectArgs : EventArgs
-    {
-        public int HotbarIndex;
-    }
-    public static event EventHandler<HotbarSelectArgs> OnHotbarSelected;
+    public System.Action<int> OnHotbarSelected;
 
     private PlayerInputHandler m_preferredSender;
     public string ActionName => "HotbarSelect";
@@ -37,7 +33,6 @@ public class PlayerHotbarController : MonoBehaviour, IPlayerInputListener
         if (!sender.Equals(PreferredSender)) return;
         else if (args.ActionName != ActionName) return;
 
-        OnHotbarSelected?.Invoke(this, new HotbarSelectArgs() { HotbarIndex = (int)args.Context.ReadValue<float>() });
-        Debug.Log((int)args.Context.ReadValue<float>() + " selected!");
+        OnHotbarSelected?.Invoke((int)args.Context.ReadValue<float>());
     }
 }
