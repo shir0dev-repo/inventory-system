@@ -5,7 +5,7 @@ namespace Shir0.InventorySystem
     /// <summary>
     /// Main item holder for the player.
     /// </summary>
-    [AddComponentMenu(menuName: "Inventory/Player ItemHolder")]
+    [AddComponentMenu(menuName: "Inventory/Player Item Holder")]
     public class PlayerItemHolder : ItemHolder
     {
         [SerializeField] private PlayerHotbar m_hotbar;

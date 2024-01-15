@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 
 namespace Shir0.InventorySystem.UI
 {
-    public class MouseInventory : MonoBehaviour, IPointerClickHandler
+    public class MouseInventory : MonoBehaviour
     {
         [SerializeField] private Camera m_camera;
         [Space]
@@ -65,18 +65,6 @@ namespace Shir0.InventorySystem.UI
         public void AssignMouseSlot(ItemCountTuple itemTuple)
         {
             m_mouseSlot.AssignSlot(itemTuple);
-        }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            // no item to drop.
-            if (m_mouseSlot.CurrentItem == null) return;
-
-            // drop all items.
-            if (eventData.button == PointerEventData.InputButton.Left)
-            {
-
-            }
         }
     }
 }

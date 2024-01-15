@@ -1,4 +1,6 @@
-﻿namespace Shir0.InventorySystem
+﻿using System.Collections.Generic;
+
+namespace Shir0.InventorySystem
 {
     /// <summary>
     /// A collection of <see cref="InventorySlot"/> with a specified size.
@@ -97,12 +99,29 @@
                 return false;
 
             // find valid slots.
-            int[] validIndices = this.FindValidSlotIndices(itemCountTuple.Item);
+            (int[] matchingIndices, int[] emptyIndices) = FindValidSlotIndices(itemCountTuple.Item);
 
             // keep track of how many items are left.
             int amountRemaining = itemCountTuple.Count;
 
-            foreach (int index in validIndices)
+            foreach (int index in matchingIndices)
+            {
+                // items have been fully added.
+                if (m_slots[index].AddToStack(itemCountTuple.Item, amountRemaining, out int remainder))
+                {
+                    return true;
+                }
+                // items could not be fully added.
+                if (remainder > 0)
+                    amountRemaining = remainder;
+                // no remainder, meaning all items have been added.
+                else
+                    return true;
+            }
+
+            if (amountRemaining <= 0) return true;
+
+            foreach (int index in emptyIndices)
             {
                 // items have been fully added.
                 if (m_slots[index].AddToStack(itemCountTuple.Item, amountRemaining, out int remainder))
@@ -287,6 +306,32 @@
             }
 
             return total;
+        }
+
+        /// <summary>
+        /// Finds all slots in the inventory that can hold a specified item.
+        /// </summary>
+        /// <param name="inventory">The inventory to search.</param>
+        /// <param name="item">The item to search with.</param>
+        /// <returns>An array of slots; first matching, then empty.</returns>
+        private (int[] matchingIndices, int[] emptyIndices) FindValidSlotIndices(ItemData item)
+        {
+            if (item == null)
+                throw new InvalidInventoryOperationException("Cannot iterate with null item!");
+
+            List<int> matchingIndices = new();
+            List<int> emptyIndices = new();
+
+            for (int i = 0; i < m_slots.Length; i++)
+            {
+                if (!m_slots[i].HasItem)
+                    emptyIndices.Add(i);
+                else if (m_slots[i].HasItem && m_slots[i].CurrentItem == item)
+                    matchingIndices.Add(i);
+            }
+
+            matchingIndices.AddRange(emptyIndices);
+            return (matchingIndices.ToArray(), emptyIndices.ToArray());
         }
     }
 }
